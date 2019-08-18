@@ -75,6 +75,14 @@ func (m *BerglasMutator) Mutate(ctx context.Context, obj metav1.Object) (bool, e
 		return false, nil
 	}
 
+	if pod.Annotations == nil {
+		pod.Annotations = make(map[string]string)
+	}
+
+	if pod.Annotations["berglas/inject"] == "false" {
+		return false, nil
+	}
+
 	mutated := false
 
 	for i, c := range pod.Spec.InitContainers {
@@ -98,6 +106,7 @@ func (m *BerglasMutator) Mutate(ctx context.Context, obj metav1.Object) (bool, e
 	if mutated {
 		pod.Spec.Volumes = append(pod.Spec.Volumes, binVolume)
 		pod.Spec.InitContainers = append([]corev1.Container{binInitContainer}, pod.Spec.InitContainers...)
+		pod.Annotations["berglas/injected"] = "true"
 	}
 
 	return false, nil
