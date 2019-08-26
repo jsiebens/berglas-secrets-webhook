@@ -1,0 +1,37 @@
+replicaCount: 2
+
+tlsCertsSecretName: berglas-secrets-webhook-tls-certs
+
+image:
+  repository: weareonthespot/berglas-secrets-webhook
+  tag: 0.1.0
+
+service:
+  name: berglas-secrets-webhook
+  type: ClusterIP
+  externalPort: 443
+  internalPort: 8443
+
+env:
+  BERGLAS_IMAGE: gcr.io/berglas/berglas:0.2.0
+
+resources:
+  limits:
+    cpu: 0.5
+    memory: 192Mi
+  requests:
+    cpu: 0.25
+    memory: 128Mi
+
+tolerations: []
+
+affinity: |
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        topologyKey: kubernetes.io/hostname
+        labelSelector:
+          matchLabels:
+            app: {{ template "berglas-secrets-webhook.name" . }}
+            release: {{ .Release.Name }}
