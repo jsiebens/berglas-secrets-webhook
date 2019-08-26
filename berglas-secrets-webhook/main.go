@@ -16,32 +16,12 @@ import (
 )
 
 const (
-	// berglasContainer is the default berglas container from which to pull the
-	// berglas binary.
-	berglasContainer = "gcr.io/berglas/berglas:0.2.0"
-
 	// binVolumeName is the name of the volume where the berglas binary is stored.
 	binVolumeName = "berglas-bin"
 
 	// binVolumeMountPath is the mount path where the berglas binary can be found.
 	binVolumeMountPath = "/berglas/bin/"
 )
-
-// binInitContainer is the container that pulls the berglas binary executable
-// into a shared volume mount.
-var binInitContainer = corev1.Container{
-	Name:            "copy-berglas-bin",
-	Image:           berglasContainer,
-	ImagePullPolicy: corev1.PullIfNotPresent,
-	Command: []string{"sh", "-c",
-		fmt.Sprintf("cp /bin/berglas %s", binVolumeMountPath)},
-	VolumeMounts: []corev1.VolumeMount{
-		{
-			Name:      binVolumeName,
-			MountPath: binVolumeMountPath,
-		},
-	},
-}
 
 // binVolume is the shared, in-memory volume where the berglas binary lives.
 var binVolume = corev1.Volume{
@@ -63,6 +43,22 @@ var binVolumeMount = corev1.VolumeMount{
 // BerglasMutator is a mutator.
 type BerglasMutator struct {
 	logger kwhlog.Logger
+}
+
+func createBinInitContainer() corev1.Container {
+	return corev1.Container{
+		Name:            "copy-berglas-bin",
+		Image:           viper.GetString("berglas_image"),
+		ImagePullPolicy: corev1.PullIfNotPresent,
+		Command: []string{"sh", "-c",
+			fmt.Sprintf("cp /bin/berglas %s", binVolumeMountPath)},
+		VolumeMounts: []corev1.VolumeMount{
+			{
+				Name:      binVolumeName,
+				MountPath: binVolumeMountPath,
+			},
+		},
+	}
 }
 
 // Mutate implements MutateFunc and provides the top-level entrypoint for object
@@ -104,6 +100,7 @@ func (m *BerglasMutator) Mutate(ctx context.Context, obj metav1.Object) (bool, e
 	// If any of the containers requested berglas secrets, mount the shared volume
 	// and ensure the berglas binary is available via an init container.
 	if mutated {
+		binInitContainer := createBinInitContainer()
 		pod.Spec.Volumes = append(pod.Spec.Volumes, binVolume)
 		pod.Spec.InitContainers = append([]corev1.Container{binInitContainer}, pod.Spec.InitContainers...)
 		pod.Annotations["berglas/injected"] = "true"
@@ -180,6 +177,7 @@ func webhookHandler() http.Handler {
 func main() {
 	logger := &kwhlog.Std{Debug: true}
 
+	viper.SetDefault("berglas_image", "gcr.io/berglas/berglas:latest")
 	viper.AutomaticEnv()
 
 	mux := http.NewServeMux()
