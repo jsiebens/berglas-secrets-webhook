@@ -1,6 +1,6 @@
 # Berglas Secrets webhook
 
-This chart will install a mutating admission webhook, that injects an executable to containers in a deployment/statefulset which than can request secrets using Berglas through environment variable definitions.
+This chart will install a mutating admission webhook, that injects an executable to containers in a deployment/statefulset which than can request secrets using [Berglas](https://github.com/GoogleCloudPlatform/berglas) through environment variable definitions.
 
 ## Before you start
 
